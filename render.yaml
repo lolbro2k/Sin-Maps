@@ -1,0 +1,73 @@
+services:
+  # 1. THE BACKEND (FastAPI via Docker)
+  # The template uses a Dockerfile, so we use Render's Docker environment
+  - type: web
+    name: fastapi-backend
+    env: docker
+    rootDir: backend
+    plan: standard
+    
+    # Render will automatically run the backend/Dockerfile
+    # The template's Dockerfile already handles Uvicorn/Gunicorn and migrations automatically
+    
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DOMAIN
+        value: your-frontend-url.onrender.com # Used by the template for cookie/CORS mapping
+      - key: BACKEND_CORS_ORIGINS
+        value: '["https://your-frontend-url.onrender.com"]'
+        
+      # Map Render's Postgres connection to the template's expected Pydantic settings
+      - key: POSTGRES_SERVER
+        fromDatabase:
+          name: template-postgres
+          property: host
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: template-postgres
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: template-postgres
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: template-postgres
+          property: database
+          
+      # Security & Auth
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FIRST_SUPERUSER
+        value: admin@example.com
+      - key: FIRST_SUPERUSER_PASSWORD
+        generateValue: true # Generates a secure password on first deploy
+
+  # 2. THE FRONTEND (React + Vite)
+  - type: static
+    name: fastapi-frontend
+    rootDir: frontend
+    
+    # The template uses bun for the frontend
+    buildCommand: npm install -g bun && bun install && bun run build
+    publishPath: dist 
+    
+    # SPA routing for React Router
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+        
+    envVars:
+      # Tells the generated OpenAPI client where to send requests
+      - key: VITE_API_URL
+        value: https://fastapi-backend.onrender.com
+
+# 3. THE DATABASE (PostgreSQL)
+databases:
+  - name: template-postgres
+    # The template explicitly expects the database to be named 'app'
+    databaseName: app
+    user: postgres
+    plan: standard
