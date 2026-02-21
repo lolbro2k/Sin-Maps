@@ -1,16 +1,19 @@
+import math
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from supabase import create_client, Client
 from typing import Optional
+import requests
 
 url: str = "https://iofbbgeonizbqvvntely.supabase.co/"
 key: str = "sb_publishable_d8ETrLfDZDFCqKT58AdOUQ_e3n5LHnU"
 supabase: Client = create_client(url, key)
 
+SEARCH_MILE_RADIUS = 3
 
 app = FastAPI()
 
-# Allow your frontend to hit this API
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # fine for local dev
@@ -27,13 +30,43 @@ def _avg_rating(reviews: list[dict]) -> Optional[float]:
     return round(sum(ratings) / len(ratings), 1)
 
 
+def geocode_address(address: str) -> Optional[str]:
+    res = requests.get(
+        "https://nominatim.openstreetmap.org/search",
+        params={
+            "q": address,
+            "format": "json",
+            "limit": 1,
+            "countrycodes": "us",
+        },
+        headers={
+            "User-Agent": "SinMaps/1.0"  # REQUIRED by Nominatim
+        },
+        timeout = 10,
+    )
+    res.raise_for_status()
+    data = res.json()
+    if not data:
+        return None
+    return float(data[0]["lat"]), float(data[0]["lon"])
+
 @app.get("/api/locations")
-def get_locations():
+def get_locations(address: str) -> Optional[list[dict]]:
+    print(address)
     """Return all locations with their first image and average review rating."""
+    lat, lon = geocode_address(address)
+
+    lat_radius = SEARCH_MILE_RADIUS / 69.0
+    lon_radius = SEARCH_MILE_RADIUS / (69.0 * math.cos(math.radians(lat)))
+
     response = (
         supabase
         .table("locations")
         .select("location_id, name, lat, long, addr, location_images(image_url), reviews(rating)")
+        .gte("lat", lat - lat_radius)
+        .lte("lat", lat + lat_radius)
+        .gte("long", lon - lon_radius)
+        .lte("long", lon + lon_radius)
         .execute()
     )
     locations = response.data or []

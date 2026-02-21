@@ -21,9 +21,21 @@ type LocationDetail = Shop & {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
-async function fetchLocations(): Promise<Shop[]> {
+
+
+type LocationQuery = {
+  address?: string
+  minRating?: number
+}
+
+async function fetchLocations(q: LocationQuery = {}): Promise<Shop[]> {
   try {
-    const res = await fetch("http://localhost:8000/api/locations")
+    const url = new URL("http://localhost:8000/api/locations")
+
+    if (q.address?.trim()) url.searchParams.set("address", q.address.trim())
+    if (q.minRating != null) url.searchParams.set("min_rating", String(q.minRating))
+
+    const res = await fetch(url.toString())
     if (!res.ok) throw new Error(`Server error: ${res.status}`)
     return res.json()
   } catch (e) {
@@ -57,7 +69,7 @@ export const Route = createFileRoute("/map")({
   ),
   errorComponent: ({ error }) => (
     <div className="flex h-screen w-full items-center justify-center">
-      <p className="text-red-600">Failed to load map: {String(error)}</p>
+      <p className="    text-red-600">Failed to load map: {String(error)}</p>
     </div>
   ),
   component: MapPage,
@@ -280,6 +292,33 @@ function MapPage() {
   const startX = useRef(0)
   const startWidth = useRef(0)
 
+  // search/filter state
+  const [shownShops, setShownShops] = useState<Shop[]>(shops)
+  const [address, setAddress] = useState("")
+  const [minRating, setMinRating] = useState<number | "">("")
+  const [isSearching, setIsSearching] = useState(false)
+
+  async function runSearch() {
+    setIsSearching(true)
+    setSelected(null)
+    const next = await fetchLocations({
+      address,
+      minRating: minRating === "" ? undefined : minRating,
+    })
+    setShownShops(next)
+    setIsSearching(false)
+  }
+
+  async function clearSearch() {
+    setAddress("")
+    setMinRating("")
+    setIsSearching(true)
+    const next = await fetchLocations()
+    setShownShops(next)
+    setIsSearching(false)
+  }
+
+
   const onMouseDown = useCallback((e: React.MouseEvent) => {
     dragging.current = true
     startX.current = e.clientX
@@ -318,7 +357,7 @@ function MapPage() {
       <div className="flex h-full w-full">
         {/* MAP AREA */}
         <div className="relative z-0 flex-1 h-full">
-          <Map shops={shops} />
+          <Map shops={shownShops} />
         </div>
 
         {/* RIGHT SIDEBAR */}
@@ -339,13 +378,55 @@ function MapPage() {
             <DetailPanel detail={selected} onBack={() => setSelected(null)} />
           ) : (
             <>
-              <div className="sticky top-0 z-10 bg-[rgb(250,250,250)] px-4 py-3 border-b border-black/10 flex items-center justify-between">
-                <h2 className="text-base font-semibold">Locations ({shops.length})</h2>
-                <span className="text-xs text-black/30 select-none">drag edge to resize</span>
-              </div>
+              <div className="sticky top-0 z-10 bg-[rgb(250,250,250)] px-4 py-3 border-b border-black/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-base font-semibold">Locations ({shownShops.length})</h2>
+                    <span className="text-xs text-black/30 select-none">drag edge to resize</span>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && runSearch()}
+                      placeholder="Search address or ZIP (e.g., 89119)"
+                      className="h-10 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-black outline-none focus:border-black/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={runSearch}
+                      disabled={isSearching}
+                      className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm text-black hover:border-black/20 disabled:opacity-60"
+                    >
+                      {isSearching ? "…" : "Search"}
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <select
+                      value={minRating}
+                      onChange={(e) => setMinRating(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm text-black hover:border-black/20 disabled:opacity-60"
+                    >
+                      <option value="">Any rating</option>
+                      <option value="4">4.0+</option>
+                      <option value="3">3.0+</option>
+                      <option value="2">2.0+</option>
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={clearSearch}
+                      disabled={isSearching}
+                      className="h-10 rounded-xl border border-black/10 bg-white px-3 text-sm text-black/60 hover:text-black hover:border-black/20 disabled:opacity-60"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
               <div className="flex-1 overflow-y-auto p-3">
                 <div className="grid grid-cols-1 gap-2.5">
-                  {shops.map((s) => (
+                  {shownShops.map((s) => (
                     <ShopCard
                       key={s.id}
                       shop={s}
