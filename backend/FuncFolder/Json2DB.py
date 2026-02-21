@@ -8,7 +8,6 @@ supabase: Client = create_client(url, key)
 # ── File paths ──
 LOCATION_FILES = ["out_club.json", "out_liquor.json", "out_smoke.json"]
 REVIEWS_FILE = "all_reviews-2.json"
-RISK_REPORT_FILE = "risk_report.json"
 
 # =====================================================================
 # STEP 1 ─ Insert locations from out_club / out_liquor / out_smoke
@@ -75,76 +74,76 @@ print(f"[+] Total locations tracked: {len(locations_map)}\n")
 # =====================================================================
 # STEP 2 ─ Insert reviews from google_reviews.json  [COMMENTED OUT]
 # =====================================================================
-# with open(REVIEWS_FILE, "r", encoding="utf-8") as f:
-#     reviews_data = json.load(f)
-#
-# print(f"[*] Loaded {len(reviews_data)} reviews from {REVIEWS_FILE}")
-#
-# # Deduplicate within the file itself by review_id
-# seen_ids: set[str] = set()
-# deduped = []
-# for rev in reviews_data:
-#     rid = rev.get("review_id", "")
-#     if rid and rid not in seen_ids:
-#         seen_ids.add(rid)
-#         deduped.append(rev)
-#     elif not rid:
-#         deduped.append(rev)  # no id — keep but can't dedup
-# print(f"[*] After dedup: {len(deduped)} unique reviews (dropped {len(reviews_data) - len(deduped)} duplicates)")
-# reviews_data = deduped
-#
-# rev_inserted = 0
-# rev_skipped = 0
-#
-# for rev in reviews_data:
-#     company = rev.get("company", "").strip()
-#     loc_id = locations_map.get(company)
-#
-#     # If the review's company isn't in the locations we just inserted,
-#     # try a DB lookup in case it already existed.
-#     if loc_id is None:
-#         try:
-#             existing = (
-#                 supabase.table("locations")
-#                 .select("location_id")
-#                 .eq("name", company)
-#                 .execute()
-#             )
-#             if existing.data:
-#                 loc_id = existing.data[0]["location_id"]
-#                 locations_map[company] = loc_id
-#         except Exception:
-#             pass
-#
-#     if loc_id is None:
-#         print(f"  [!] No matching location for company '{company}' — skipping review")
-#         rev_skipped += 1
-#         continue
-#
-#     review_text_obj = rev.get("review_text", {})
-#     review_text = review_text_obj.get("en", "") if isinstance(review_text_obj, dict) else ""
-#
-#     rating = rev.get("rating")
-#     if rating is not None:
-#         rating = int(rating)
-#
-#     review_row = {
-#         "location_id": loc_id,
-#         "review_content": review_text,
-#         "rating": rating,
-#     }
-#
-#     try:
-#         supabase.table("reviews").insert(review_row).execute()
-#         rev_inserted += 1
-#     except Exception as e:
-#         print(f"  [!] Error inserting review by '{rev.get('author', 'N/A')}': {e}")
-#         rev_skipped += 1
-#
-# print(f"\n[+] Done!")
-# print(f"    Locations tracked : {len(locations_map)}")
-# print(f"    Reviews inserted  : {rev_inserted}")
-# print(f"    Reviews skipped   : {rev_skipped}")
+with open(REVIEWS_FILE, "r", encoding="utf-8") as f:
+    reviews_data = json.load(f)
+
+print(f"[*] Loaded {len(reviews_data)} reviews from {REVIEWS_FILE}")
+
+# Deduplicate within the file itself by review_id
+seen_ids: set[str] = set()
+deduped = []
+for rev in reviews_data:
+    rid = rev.get("review_id", "")
+    if rid and rid not in seen_ids:
+        seen_ids.add(rid)
+        deduped.append(rev)
+    elif not rid:
+        deduped.append(rev)  # no id — keep but can't dedup
+print(f"[*] After dedup: {len(deduped)} unique reviews (dropped {len(reviews_data) - len(deduped)} duplicates)")
+reviews_data = deduped
+
+rev_inserted = 0
+rev_skipped = 0
+
+for rev in reviews_data:
+    company = rev.get("company", "").strip()
+    loc_id = locations_map.get(company)
+
+    # If the review's company isn't in the locations we just inserted,
+    # try a DB lookup in case it already existed.
+    if loc_id is None:
+        try:
+            existing = (
+                supabase.table("locations")
+                .select("location_id")
+                .eq("name", company)
+                .execute()
+            )
+            if existing.data:
+                loc_id = existing.data[0]["location_id"]
+                locations_map[company] = loc_id
+        except Exception:
+            pass
+
+    if loc_id is None:
+        print(f"  [!] No matching location for company '{company}' — skipping review")
+        rev_skipped += 1
+        continue
+
+    review_text_obj = rev.get("review_text", {})
+    review_text = review_text_obj.get("en", "") if isinstance(review_text_obj, dict) else ""
+
+    rating = rev.get("rating")
+    if rating is not None:
+        rating = int(rating)
+
+    review_row = {
+        "location_id": loc_id,
+        "review_content": review_text,
+        "rating": rating,
+    }
+
+    try:
+        supabase.table("reviews").insert(review_row).execute()
+        rev_inserted += 1
+    except Exception as e:
+        print(f"  [!] Error inserting review by '{rev.get('author', 'N/A')}': {e}")
+        rev_skipped += 1
+
+print(f"\n[+] Done!")
+print(f"    Locations tracked : {len(locations_map)}")
+print(f"    Reviews inserted  : {rev_inserted}")
+print(f"    Reviews skipped   : {rev_skipped}")
 
 # =====================================================================
 # STEP 3 ─ Insert location images from all three location JSON files
@@ -215,71 +214,3 @@ for filepath in LOCATION_FILES:
 
 print(f"\n[+] Images inserted : {img_inserted}")
 print(f"    Images skipped  : {img_skipped}")
-
-# =====================================================================
-# STEP 4 ─ Insert risk report from risk_report.json
-# =====================================================================
-print("\n[*] Inserting risk reports...")
-
-with open(RISK_REPORT_FILE, "r", encoding="utf-8") as f:
-    risk_data = json.load(f)
-
-print(f"[*] Loaded {len(risk_data)} entries from {RISK_REPORT_FILE}")
-
-risk_inserted = 0
-risk_skipped = 0
-
-for entry in risk_data:
-    biz_name = entry.get("business_name", "").strip()
-    if not biz_name:
-        risk_skipped += 1
-        continue
-
-    # Skip if already reported
-    try:
-        existing = (
-            supabase.table("risk_reports")
-            .select("id")
-            .eq("business_name", biz_name)
-            .execute()
-        )
-        if existing.data:
-            print(f"  [=] Already exists: {biz_name}")
-            risk_skipped += 1
-            continue
-    except Exception:
-        pass
-
-    # Look up location_id by name
-    loc_id = locations_map.get(biz_name)
-    if loc_id is None:
-        try:
-            res = (
-                supabase.table("locations")
-                .select("location_id")
-                .eq("name", biz_name)
-                .execute()
-            )
-            if res.data:
-                loc_id = res.data[0]["location_id"]
-        except Exception:
-            pass
-
-    risk_row = {
-        "location_id": loc_id,
-        "business_name": biz_name,
-        "summary": entry.get("summary", ""),
-        "risk_score": entry.get("risk_score"),
-        "risk_reason": entry.get("risk_reason", ""),
-    }
-
-    try:
-        supabase.table("risk_reports").insert(risk_row).execute()
-        risk_inserted += 1
-        print(f"  [+] {biz_name} (risk={risk_row['risk_score']})")
-    except Exception as e:
-        print(f"  [!] Error inserting risk report for '{biz_name}': {e}")
-        risk_skipped += 1
-
-print(f"\n[+] Risk reports inserted : {risk_inserted}")
-print(f"    Risk reports skipped  : {risk_skipped}")

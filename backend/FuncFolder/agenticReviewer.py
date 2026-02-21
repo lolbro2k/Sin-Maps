@@ -99,6 +99,67 @@ def analyze_business(name: str, review_block: str) -> dict:
         }
 
 
+def upsert_risk_reports(results: list[dict]):
+    """Insert or update risk reports in Supabase after agent analysis."""
+    inserted = 0
+    skipped = 0
+
+    for entry in results:
+        biz_name = entry.get("business_name", "").strip()
+        if not biz_name:
+            skipped += 1
+            continue
+
+        # Resolve location_id from DB
+        loc_id = None
+        try:
+            res = (
+                supabase.table("locations")
+                .select("location_id")
+                .eq("name", biz_name)
+                .execute()
+            )
+            if res.data:
+                loc_id = res.data[0]["location_id"]
+        except Exception:
+            pass
+
+        risk_score = entry.get("risk_score")
+        if isinstance(risk_score, str):
+            risk_score = None  # discard "N/A" or parse failures
+
+        risk_row = {
+            "location_id": loc_id,
+            "business_name": biz_name,
+            "summary": entry.get("summary", ""),
+            "risk_score": risk_score,
+            "risk_reason": entry.get("risk_reason", ""),
+        }
+
+        try:
+            # Check if a report already exists and update it, otherwise insert
+            existing = (
+                supabase.table("risk_reports")
+                .select("id")
+                .eq("business_name", biz_name)
+                .execute()
+            )
+            if existing.data:
+                report_id = existing.data[0]["id"]
+                supabase.table("risk_reports").update(risk_row).eq("id", report_id).execute()
+                print(f"  [~] Updated: {biz_name} (risk={risk_score})")
+            else:
+                supabase.table("risk_reports").insert(risk_row).execute()
+                print(f"  [+] Inserted: {biz_name} (risk={risk_score})")
+            inserted += 1
+        except Exception as e:
+            print(f"  [!] Error upserting risk report for '{biz_name}': {e}")
+            skipped += 1
+
+    print(f"\n[+] Risk reports upserted : {inserted}")
+    print(f"    Risk reports skipped  : {skipped}")
+
+
 def main():
     locations = fetch_locations_with_reviews()
     print(f"[*] Found {len(locations)} locations in the database.\n")
@@ -126,8 +187,11 @@ def main():
     # Save full results to JSON
     with open("risk_report.json", "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
-
     print(f"\n[+] Full report saved to risk_report.json")
+
+    # Push results directly into Supabase
+    print("\n[*] Upserting risk reports into Supabase...")
+    upsert_risk_reports(results)
 
 
 if __name__ == "__main__":
