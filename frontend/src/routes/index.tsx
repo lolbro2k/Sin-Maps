@@ -48,7 +48,7 @@ function Home() {
       </section>
 
       {/* INFO SECTION */}
-      <section className="bg-gradient-to-b from-black via-purple-950 to-black py-20 px-6">
+      <section className="bg-[linear-gradient(to_bottom,_#050000,_#2a0f4a,_#3b0764,_#2a0f4a,_black)] py-20 px-6">
         <div className="max-w-5xl mx-auto text-center space-y-8">
 
           <h2 className="text-4xl md:text-5xl font-semibold text-purple-300">

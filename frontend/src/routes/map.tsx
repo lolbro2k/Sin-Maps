@@ -159,8 +159,8 @@ function DetailPanel({
             </div>
           )}
           {detail.rating != null && (
-            <p className="text-sm">
-              ⭐ <span className="font-semibold">{detail.rating.toFixed(1)}</span>
+            <p className="text-sm text-black">
+              <span className="font-semibold text-purple-700">{detail.rating.toFixed(1)}</span>
               {detail.reviewCount != null && detail.reviewCount > 0
                 ? ` · ${detail.reviewCount} review${detail.reviewCount !== 1 ? "s" : ""}`
                 : ""}
@@ -172,7 +172,7 @@ function DetailPanel({
         {detail.riskReport ? (
           <section className="rounded-xl border border-black/10 bg-white p-4 space-y-3">
             <div className="flex items-center justify-between gap-2 flex-wrap">
-              <h3 className="font-semibold text-sm">Risk Report</h3>
+              <h3 className="font-semibold text-black">Risk Report</h3>
               <RiskBadge score={detail.riskReport.risk_score} />
             </div>
             {detail.riskReport.summary && (
@@ -250,14 +250,14 @@ function ShopCard({ shop, onClick }: { shop: Shop; onClick: () => void }) {
           <div className="font-semibold truncate text-black">{shop.name}</div>
           <div className="mt-2 flex flex-wrap gap-2">
             {shop.rating != null ? (
-              <span className="text-xs rounded-full bg-black/5 px-2 py-1">
-                ⭐ {shop.rating.toFixed(1)}
+              <span className="text-xs rounded-full bg-black px-2 py-1">
+                 {shop.rating.toFixed(1)}
                 {shop.reviewCount != null && shop.reviewCount > 0
                   ? ` (${shop.reviewCount})`
                   : ""}
               </span>
             ) : null}
-            <span className="text-xs rounded-full bg-black/5 px-2 py-1 text-black/40">View details →</span>
+            <span className="text-xs rounded-full bg-black/3 px-2 py-1 text-black">View details →</span>
           </div>
         </div>
       </div>
@@ -340,8 +340,7 @@ function MapPage() {
           ) : (
             <>
               <div className="sticky top-0 z-10 bg-[rgb(250,250,250)] px-4 py-3 border-b border-black/10 flex items-center justify-between">
-                <h2 className="text-base font-semibold">Locations ({shops.length})</h2>
-                <span className="text-xs text-black/30 select-none">drag edge to resize</span>
+                <h2 className="text-base font-semibold text-black">Locations ({shops.length})</h2>
               </div>
               <div className="flex-1 overflow-y-auto p-3">
                 <div className="grid grid-cols-1 gap-2.5">
