@@ -1,10 +1,36 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+// import Map from '../components/map.tsx'
+import { BrowserRouter } from 'react-router-dom'
+import App from './App'
+import { Link } from '@tanstack/react-router'
 
+// ReactDOM.createRoot(document.getElementById('root')!).render(
+//   <React.StrictMode>
+//     <Map />
+//   </React.StrictMode>
+// )
 
 export const Route = createFileRoute("/")({
   component: Home,
 });
+
+// Map
+<Link
+  to="/map"
+  className="inline-block px-6 py-2 rounded-full bg-purple-600 text-white"
+>
+  Open Map
+</Link>
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </React.StrictMode>
+)
 
 function Home() {
   const [activeSection, setActiveSection] = useState("liquor");
