@@ -51,7 +51,7 @@ def geocode_address(address: str) -> Optional[str]:
     return float(data[0]["lat"]), float(data[0]["lon"])
 
 @app.get("/api/locations")
-def get_locations(address: str) -> Optional[list[dict]]:
+def get_locations(address: str, rating: Optional[float] = None,)  -> list[dict]:
     print(address)
     """Return all locations with their first image and average review rating."""
     lat, lon = geocode_address(address)
@@ -67,8 +67,12 @@ def get_locations(address: str) -> Optional[list[dict]]:
         .lte("lat", lat + lat_radius)
         .gte("long", lon - lon_radius)
         .lte("long", lon + lon_radius)
-        .execute()
     )
+    print(rating)
+    if rating:
+        response.eq("rating", rating)
+
+    response = response.execute()
     locations = response.data or []
 
     result = []
