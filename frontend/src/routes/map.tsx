@@ -1,22 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router"
-import Map from "../components/map"
+import Map, { type Shop } from "../components/map"
 
-type Shop = {
-  id: string
-  name: string
-  address: string
-  city: string
-  lat: number
-  lng: number
-  distanceMi?: number
-  rating?: number
-  reviewCount?: number
-  tags?: string[]
-  imageUrl?: string
-  isOpenNow?: boolean
-}
-
-// ✅ change this to your real endpoint
 async function fetchShops(): Promise<Shop[]> {
   const res = await fetch("http://localhost:8000/api/shops") // or "http://localhost:8000/shops"
   if (!res.ok) throw new Error(`Failed to fetch shops: ${res.status}`)
